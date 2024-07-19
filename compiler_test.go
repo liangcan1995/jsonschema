@@ -133,13 +133,13 @@ func TestCustomVocabMetaschema(t *testing.T) {
 	metaschema, err := jsonschema.UnmarshalJSON(strings.NewReader(`{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"$vocabulary": {
-			"http://example.com/meta/unique-keys": true,
+			"http://example.com/meta/objectKind": true,
 			"https://json-schema.org/draft/2020-12/vocab/validation": true,
 			"https://json-schema.org/draft/2020-12/vocab/core": true
 		},
 		"$dynamicAnchor": "meta",
 		"allOf": [
-			{ "$ref": "http://example.com/meta/unique-keys" },
+			{ "$ref": "http://example.com/meta/objectKind" },
 			{ "$ref": "https://json-schema.org/draft/2020-12/meta/validation" },
 			{ "$ref": "https://json-schema.org/draft/2020-12/meta/core" }
 		]
@@ -148,16 +148,16 @@ func TestCustomVocabMetaschema(t *testing.T) {
 		t.Fatal(err)
 	}
 	schema, err := jsonschema.UnmarshalJSON(strings.NewReader(`{
-		"$schema": "http://temp.com/metaschema",
-		"uniqueKeys": 1
+		"$schema": "http://example.com/meta/objectKind",
+		"$object-reference-kind": 1
 	}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	c := jsonschema.NewCompiler()
-	c.RegisterVocabulary(uniqueKeysVocab())
-	if err := c.AddResource("http://temp.com/metaschema", metaschema); err != nil {
+	c.RegisterVocabulary(ObjectKindVocab())
+	if err := c.AddResource("http://example.com/meta/objectKind", metaschema); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.AddResource("invalid_schema.json", schema); err != nil {
@@ -172,18 +172,56 @@ func TestCustomVocabMetaschema(t *testing.T) {
 		t.Fatalf(" got %v", err)
 	}
 
+	//schema, err = jsonschema.UnmarshalJSON(strings.NewReader(`{
+	//	"$schema": "http://temp.com/metaschema",
+	//	"uniqueKeys": "id"
+	//}`))
 	schema, err = jsonschema.UnmarshalJSON(strings.NewReader(`{
-		"$schema": "http://temp.com/metaschema",
-		"uniqueKeys": "id"
+		"$schema": "http://example.com/meta/objectKind",
+		"type": "object",
+		"uniqueKeys": "id",
+        "$object-reference-kind": "111111",
+		"properties": {
+			"kind": { "type": "string" },
+			"fish": {
+				"type": "object",
+				"properties": {
+					"swimmingSpeed": { 
+						"type": "number"
+						
+					}
+				},
+				"uniqueKeys": "id",
+				"required": ["swimmingSpeed"]
+			},
+			"dog": {
+				"type": "object",
+				"properties": {
+					"runningSpeed": { 
+						"type": "number" 
+					}
+				},
+				"uniqueKeys": "id",
+				"required": ["runningSpeed"],
+				"$object-reference-kind": "22222"
+			}
+		},
+		"required": ["kind"]
 	}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	inst, err := jsonschema.UnmarshalJSON(strings.NewReader(`[
-		{ "id": 1, "name": "alice" },
-		{ "id": 2, "name": "bob" },
-		{ "id": 1, "name": "scott" }
-	]`))
+	//inst, err := jsonschema.UnmarshalJSON(strings.NewReader(`[
+	//	{ "id": 1, "name": "alice" },
+	//	{ "id": 2, "name": "bob" },
+	//	{ "id": 1, "name": "scott" }
+	//]`))
+
+	inst, err := jsonschema.UnmarshalJSON(strings.NewReader(`{
+		"kind": "fish",
+		"dog":{"runningSpeed": 5},
+		"fish":{"swimmingSpeed": 3}
+	}`))
 	if err != nil {
 		t.Fatal(err)
 	}

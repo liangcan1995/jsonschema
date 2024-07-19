@@ -462,3 +462,58 @@ func (e *localizableError) Error() string {
 func (e *localizableError) LocalizedError(p *message.Printer) string {
 	return p.Sprintf(e.msg, e.args...)
 }
+
+type ObjectRef struct {
+	Path  []string
+	Value any
+	Obj   any
+}
+
+func ExtractValueByPath(data map[string]any, path []string, keyword string) any {
+	var current any = data
+
+	for index, key := range path {
+		if key == keyword {
+			return current
+		}
+		va, ex := data[key]
+		if ex {
+			switch va.(type) {
+			case map[string]any:
+				current = ExtractValueByPath(va.(map[string]any), path[index:], keyword)
+			default:
+				return va
+			}
+		}
+	}
+
+	return current
+}
+
+func BuildRef(objectRefs *ObjectRef, keyword string, instanceMap map[string]any) {
+	objectRefs.Obj = ExtractValueByPath(instanceMap, objectRefs.Path, keyword)
+}
+
+func ExtractObjectRefs(data any, basePath []string, keyword string) []ObjectRef {
+	var refs []ObjectRef
+
+	switch v := data.(type) {
+	case map[string]any:
+		for key, value := range v {
+			var currentPath = basePath
+			if key != "properties" {
+				currentPath = append(basePath, key)
+			}
+			if key == keyword {
+				refs = append(refs, ObjectRef{Path: currentPath, Value: value})
+			} else {
+				refs = append(refs, ExtractObjectRefs(value, currentPath, keyword)...)
+			}
+		}
+	default:
+		// 处理数组或其他类型（如果 JSON Schema 中有的话）
+		return nil
+	}
+
+	return refs
+}
